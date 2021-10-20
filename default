@@ -1,0 +1,47 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+		
+    root    /var/www/html/public;
+    index index.html index.htm;
+    client_max_body_size 30m;
+	
+    charset utf-8;
+	
+    location = / {
+        proxy_pass http://127.0.0.1:8000;
+    }	
+    ##### 第二个規則: 處理静態文件請求，這是nginx作为http服務器的强項
+    # 有兩種配置模式，目錄匹配或後匹配,任選其一或搭配使用
+    # location ^~ /static/ {
+    #     root /webroot/static/;
+    # }
+	
+    location ~* \.(js|css|map|png|jpg|jpeg|gif|ico|ttf|woff2|woff|svg|mp3|doc|zip)$ {
+        expires       max;
+        access_log    off;
+    }
+	
+	location ~* \.php$ {
+		deny all;
+    }
+    ##### 通用規則: 上面的都不匹配
+    location / {
+        # try_files $uri $uri/;
+
+        # proxy_redirect  off;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_http_version 1.1;
+        # proxy_set_header Upgrade $http_upgrade;
+        # proxy_set_header Connection "upgrade";
+        proxy_set_header Connection "keep-alive";
+
+        # 没有找到文件就轉發到 swoole server
+        # 也可去掉 if. 全部轉發到後端server
+        if (!-e $request_filename){
+            proxy_pass http://127.0.0.1:8000;
+        }
+    }
+}
